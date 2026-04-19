@@ -40,7 +40,7 @@ def one_hot_encode(seq):
     return one_hot
 
 def extract_sequence(chrom, center):
-    """Return one‑hot encoded sequence of length SEQ_LEN centered at `center`.
+    """Return one-hot encoded sequence of length SEQ_LEN centered at `center`.
        Returns None if the window falls outside the chromosome."""
     start = max(0, center - HALF_LEN)
     end = center + HALF_LEN
