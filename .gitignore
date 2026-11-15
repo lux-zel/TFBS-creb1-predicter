@@ -1,2 +1,19 @@
-#ignore the data folder
-data/
+# data
+data/raw/
+data/processed/
+*.fa
+*.fa.gz
+*.bed
+*.bed.gz
+*.npz
+
+# python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# jetbrains
+.idea/
+
+# env
+.venv/
