@@ -101,6 +101,12 @@ def extract_window(fa, chrom: str, center: int, width: int) -> np.ndarray:
     return enc.astype(np.float32, copy=False)
 
 
+def _peak_center(row) -> int:
+    if row.summit >= 0:
+        return int(row.start + row.summit)
+    return int(row.start + (row.end - row.start) // 2)
+
+
 def sample_negatives(fa, peaks: pd.DataFrame, n: int,
                      window: int, seed: int) -> tuple[np.ndarray, list[str]]:
     pass
