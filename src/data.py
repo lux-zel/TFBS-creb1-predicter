@@ -76,7 +76,29 @@ def one_hot(seq: str) -> np.ndarray:
 
 
 def extract_window(fa, chrom: str, center: int, width: int) -> np.ndarray:
-    pass
+    if width <= 0:
+        raise ValueError(f"width must be positive, got {width}")
+
+    half = width // 2
+    start0 = center - half
+    end0 = start0 + width
+
+    chrom_len = len(fa[chrom])
+
+    clip_start = max(start0, 0)
+    clip_end = min(end0, chrom_len)
+
+    seq = str(fa[chrom][clip_start + 1: clip_end + 1]).upper()
+
+    enc = one_hot(seq)
+
+    if enc.shape[1] != width:
+        pad_left = clip_start - start0
+
+        pad_right = end0 - clip_end
+        enc = np.pad(enc, ((0, 0), (pad_left, pad_right)), constant_values = 0)
+
+    return enc.astype(np.float32, copy=False)
 
 
 def sample_negatives(fa, peaks: pd.DataFrame, n: int,
