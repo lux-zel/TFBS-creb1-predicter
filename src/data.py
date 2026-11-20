@@ -9,13 +9,15 @@ import numpy as np
 import pandas as pd
 from pyfaidx import Fasta
 
-
+#constants, voor de chromosome identificatie en de one_hot 
+#encoding van de basen.
 CANONICAL_CHROMS = [str(i) for i in range(1, 23)] + ["X", "Y"]
 
 NARROWPEAK_COLS = [
     "chrom", "start", "end", "name", "score", "strand",
-    "signalValue", "pValue", "qValue", "summit",
-]
+    "signalValue", "pValue", "qValue", "summit"]
+
+BASE_TO_IDX: dict[str, int] = {"A": 0, "C": 1, "G": 2, "T": 3}
 
 
 @dataclass
@@ -63,7 +65,14 @@ def load_peaks(path: Path) -> pd.DataFrame:
 
 
 def one_hot(seq: str) -> np.ndarray:
-    pass
+    seq = seq.upper()
+    out = np.zeros((4, len(seq)), dtype=np.float32)
+    for i, b in enumerate(seq):
+        idx = BASE_TO_IDX.get(b)
+        if idx is not None:
+            out[idx, i] = 1.0
+    return out
+
 
 
 def extract_window(fa, chrom: str, center: int, width: int) -> np.ndarray:
