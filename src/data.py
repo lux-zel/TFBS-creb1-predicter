@@ -162,7 +162,49 @@ def sample_negatives(fa: Fasta, peaks: pd.DataFrame, n: int,
 
 
 def build_dataset(cfg: DataConfig) -> dict:
-    pass
+    cfg.out_dir.mkdir(parents=True, exist_ok=True)
+    cache = cfg.cache_path()
+
+    if cache.exists():
+        z = np.load(cache, allow_pickle=True)
+        return {
+            "X_pos": z["X_pos"],
+            "chroms_pos": z["chroms_pos"],
+            "X_neg": z["X_neg"],
+            "chroms_neg": z["chroms_neg"],
+        }
+
+    if not Path(cfg.fasta_path).exists():
+        raise FileNotFoundError(f"FASTA not found: {cfg.fasta_path}")
+
+    peaks = load_peaks(cfg.bed_path)
+    fa = Fasta(str(cfg.fasta_path), as_raw=True)
+
+    centers = np.array([_peak_center(r) for r in peaks.itertuples()])
+    X_pos = np.empty((len(peaks), 4, cfg.window), dtype=np.float32)
+    for i, (c, center) in enumerate(zip(peaks["chrom"], centers)):
+        X_pos[i] = extract_window(fa, c, int(center), cfg.window)
+    chroms_pos = peaks["chrom"].to_numpy()
+
+    n_neg = int(len(peaks) * cfg.neg_per_pos)
+    X_neg, chroms_neg = sample_negatives(
+        fa, peaks, n=n_neg, width=cfg.window, seed=cfg.seed
+    )
+
+    np.savez_compressed(
+        cache,
+        X_pos=X_pos,
+        chroms_pos=chroms_pos,
+        X_neg=X_neg,
+        chroms_neg=np.array(chroms_neg, dtype=object),
+    )
+
+    return {
+        "X_pos": X_pos,
+        "chroms_pos": chroms_pos,
+        "X_neg": X_neg,
+        "chroms_neg": np.array(chroms_neg, dtype=object),
+    }
 
 
 def split_by_chromosome(X, y, chroms, test_chroms) -> tuple:
