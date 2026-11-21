@@ -22,13 +22,21 @@ BASE_TO_IDX: dict[str, int] = {"A": 0, "C": 1, "G": 2, "T": 3}
 
 @dataclass
 class DataConfig:
-    bed_path: Path
-    fasta_path: Path
-    out_dir: Path
+    """All knobs that affect dataset content. Used for cache-keying."""
+    bed_path: Path = Path("data/raw/creb1_peaks.bed")
+    fasta_path: Path = Path("data/raw/Homo_sapiens.GRCh38.dna.primary_assembly.fa")
+    out_dir: Path = Path("data/processed")
+
     window: int = 500
     neg_per_pos: int = 1
     seed: int = 0
+
     test_chroms: tuple[str, ...] = ("1", "2")
+
+    def cache_path(self) -> Path:
+        return self.out_dir / (
+            f"dataset_w{self.window}_n{self.neg_per_pos}_s{self.seed}.npz"
+        )
 
 
 def load_peaks(path: Path) -> pd.DataFrame:
@@ -207,5 +215,40 @@ def build_dataset(cfg: DataConfig) -> dict:
     }
 
 
-def split_by_chromosome(X, y, chroms, test_chroms) -> tuple:
-    pass
+def split_by_chromosome(data: dict, test_chroms: Iterable[str] = ("1", "2")) -> dict:
+    test_set = set(test_chroms)
+
+    def _cat(X, chroms):
+        y = np.array([1 if k == "pos" else 0 for k in chroms_kind], dtype=np.float32)
+
+    pos_mask = np.array([c in test_set for c in data["chroms_pos"]])
+    X_pos_tr = data["X_pos"][~pos_mask]
+    X_pos_te = data["X_pos"][pos_mask]
+    chroms_pos_tr = data["chroms_pos"][~pos_mask]
+    chroms_pos_te = data["chroms_pos"][pos_mask]
+
+    # Negatives
+    neg_mask = np.array([c in test_set for c in data["chroms_neg"]])
+    X_neg_tr = data["X_neg"][~neg_mask]
+    X_neg_te = data["X_neg"][neg_mask]
+    chroms_neg_tr = data["chroms_neg"][~neg_mask]
+    chroms_neg_te = data["chroms_neg"][neg_mask]
+
+    X_train = np.concatenate([X_pos_tr, X_neg_tr], axis=0)
+    y_train = np.concatenate([
+        np.ones(len(X_pos_tr), dtype=np.float32),
+        np.zeros(len(X_neg_tr), dtype=np.float32),
+    ])
+    chroms_train = np.concatenate([chroms_pos_tr, chroms_neg_tr])
+
+    X_test = np.concatenate([X_pos_te, X_neg_te], axis=0)
+    y_test = np.concatenate([
+        np.ones(len(X_pos_te), dtype=np.float32),
+        np.zeros(len(X_neg_te), dtype=np.float32),
+    ])
+    chroms_test = np.concatenate([chroms_pos_te, chroms_neg_te])
+
+    return {
+        "X_train": X_train, "y_train": y_train, "chroms_train": chroms_train,
+        "X_test": X_test, "y_test": y_test, "chroms_test": chroms_test,
+    }
