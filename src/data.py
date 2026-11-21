@@ -218,9 +218,7 @@ def build_dataset(cfg: DataConfig) -> dict:
 def split_by_chromosome(data: dict, test_chroms: Iterable[str] = ("1", "2")) -> dict:
     test_set = set(test_chroms)
 
-    def _cat(X, chroms):
-        y = np.array([1 if k == "pos" else 0 for k in chroms_kind], dtype=np.float32)
-
+    
     pos_mask = np.array([c in test_set for c in data["chroms_pos"]])
     X_pos_tr = data["X_pos"][~pos_mask]
     X_pos_te = data["X_pos"][pos_mask]
