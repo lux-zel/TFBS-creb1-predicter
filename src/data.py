@@ -107,9 +107,58 @@ def _peak_center(row) -> int:
     return int(row.start + (row.end - row.start) // 2)
 
 
-def sample_negatives(fa, peaks: pd.DataFrame, n: int,
-                     window: int, seed: int) -> tuple[np.ndarray, list[str]]:
-    pass
+def sample_negatives(fa: Fasta, peaks: pd.DataFrame, n: int,
+                     width: int, seed: int = 0) -> tuple[np.ndarray, list[str]]:
+    rng = np.random.default_rng(seed)
+
+    peak_by_chrom: dict[str, np.ndarray] = {}
+    for c, sub in peaks.groupby("chrom"):
+        arr = sub[["start", "end"]].to_numpy(dtype=np.int64)
+        peak_by_chrom[c] = arr[np.argsort(arr[:, 0])]
+
+    present = [c for c in CANONICAL_CHROMS if c in fa.keys()]
+    lengths = np.array([len(fa[c]) for c in present], dtype=np.int64)
+
+    if (lengths < width).all():
+        raise ValueError("No chromosome is long enough to fit a window.")
+
+    usable = lengths >= width
+    present = [c for c, ok in zip(present, usable) if ok]
+    weights = lengths[usable] / lengths[usable].sum()
+
+    X = np.empty((n, 4, width), dtype=np.float32)
+    chroms: list[str] = []
+
+    max_attempts = n * 100
+    attempts = 0
+    filled = 0
+    while filled < n:
+        if attempts >= max_attempts:
+            raise RuntimeError(
+                f"Negative sampling failed after {max_attempts} attempts "
+                f"({filled}/{n} filled). Chromosome may be too dense with peaks."
+            )
+        attempts += 1
+
+        chrom = present[rng.choice(len(present), p=weights)]
+        chrom_len = len(fa[chrom])
+        start = int(rng.integers(0, chrom_len - width + 1))
+        end = start + width
+
+        pk = peak_by_chrom.get(chrom)
+        if pk is not None and pk.size:
+            starts = pk[:, 0]
+            lo = np.searchsorted(pk[:, 1], start, side="right")
+            hi = np.searchsorted(starts, end, side="left")
+            if hi > lo:
+                continue  
+
+        seq = str(fa[chrom][start + 1: end + 1]).upper()
+        X[filled] = one_hot(seq)
+        chroms.append(chrom)
+        filled += 1
+
+    return X, chroms
 
 
 def build_dataset(cfg: DataConfig) -> dict:

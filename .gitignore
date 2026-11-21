@@ -22,4 +22,4 @@ data/processed/
 *.fa
 *.bed
 __pycache__/
-.vscode
+*vscode
