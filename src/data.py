@@ -50,7 +50,7 @@ def load_peaks(path: Path) -> pd.DataFrame:
             sep="\t",
             header=None,
             names=NARROWPEAK_COLS,
-            usecols=["chrom", "start", "end", "signalvalue", "summit"],
+            usecols=["chrom", "start", "end", "signalValue", "summit"],
             dtype={"chrom": str})
 
     df["chrom"] = df["chrom"].str.replace(r"^chr", "", regex=True)
