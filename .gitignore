@@ -23,3 +23,13 @@ data/processed/
 *.bed
 __pycache__/
 *vscode
+
+# build artifacts
+*.egg-info/
+build/
+dist/
+
+# editors / notebooks
+.vscode/
+.idea/
+.ipynb_checkpoints/
